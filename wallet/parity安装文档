@@ -1,0 +1,123 @@
+Ethereum(parity) 运 环境
+Ubuntu16.04、CPU:2、MEM:4G
+
+节点程序（生产环境）
+
+1、wget 链接地址
+wget http://d1h4xl4cr1h0mo.cloudfront.net/v1.9.5/x86_64-unknown- linux-gnu/parity_1.9.5_ubuntu_amd64.deb
+将包内内容解压 dpkg -X ./parity_1.9.5_ubuntu_amd64.deb  /data/app/parity
+控制台(使 geth节点程序登录parity控制台):点击下载 1、复制 Geth *** for Linux 链接地址
+2、wget 链接地址
+wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.8.3-329ac18e.tar.gz
+
+3、将包内内容解压 指定 件夹下(绝对 径)
+tar -zxvf geth-linux-amd64-1.8.3-329ac18e.tar.gz -C /data/app/geth
+4、将控制台程序copy到节点程序目录下
+cp /data/app/geth/geth-linux-amd64-1.8.3-329ac18e/geth /data/app/parity/usr/bin/
+
+节点程序 : /hbdata/app/parity/usr/bin/parity 
+控制台程序 : /data/app/parity/usr/bin/geth
+
+节点部署(主 ) 节点配置文件:
+#此为节点数据 径，如 设置默认在~/.local/share/io.parity.ethereum/下，为方便管理，建议设置
+[parity]
+base_path = "/data/app/parity/usr/bin/data"
+db_path = "/data/app/parity/usr/bin/data/chains"
+keys_path = "/data/app/parity/usr/bin/data/keys"
+#此为节点程序 络连接端 ，默认30330
+port = 30300
+#此为节点程序控制台配置数据，port为控制台访问端 ，interface为控制台可访问主 机ip(all=0.0.0.0)
+#apis为控制台模块:
+#
+#
+#
+[rpc]
+
+port = 8542
+interface = "all"
+apis = ["web3", "eth", "net", "parity", "traces", "parity_set","rpc", "personal"]
+
+1、将配置内容储存为 件(config.toml)放于节点程序同目录下 启动命令:(节点程序 录下)
+nohup ./parity --config config.toml >parity.log 2>&1 &
+
+2、 输出日志监控:
+tail -f parity.log
+
+
+节点部署(测试环境 )
+
+所有操作将在节点程序目录下进 
+1、需要一个创世区块: 
+{
+"name": "DemoPoA",
+"engine": {
+"authorityRound": {
+"params": {
+"gasLimitBoundDivisor": "0x400",
+"stepDuration": "5",
+"validators" : {
+"list": ["0x1160db6a315380f7e0e02655dedaba359462cd79"] }//后面需要手动创建账号
+} }
+},
+"params": {
+"gasLimitBoundDivisor": "0x400",
+"maximumExtraDataSize": "0x20",
+"minGasLimit": "0x1388",
+"networkID" : "0x2323"
+},
+"genesis": {
+"seal": {
+"authorityRound": {
+"step": "0x0",
+"signature":"0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+} },
+"difficulty": "0x20000",
+"gasLimit": "0x5B8D80"
+},
+"accounts": {
+"0x0000000000000000000000000000000000000001": { "balance":"1", "builtin": { "name": "ecrecover", "pricing": { "linear": {"base": 3000, "word": 0 } 
+} } },
+"0x0000000000000000000000000000000000000002": { "balance":"1", "builtin": { "name": "sha256", "pricing": { "linear": {"base": 60, "word": 12 } } } 
+},
+"0x0000000000000000000000000000000000000003": { "balance":"1", "builtin": { "name": "ripemd160", "pricing": { "linear": {"base": 600, "word": 120 }
+} } },
+"0x0000000000000000000000000000000000000004": { "balance":"1", "builtin": { "name": "identity", "pricing": { "linear": {"base": 15, "word": 3 }} }}
+, "0x1160db6a315380f7e0e02655dedaba359462cd79":{ "balance":"10000000000000000000000"} //添加账号的余额
+} }
+
+将上述代码存成demo-spec.json stepDuration 设定成5秒产一个区块
+
+validators 设定Authority的地方，目前先空著，后续产生account之后再回来填
+
+2、设定node:
+创建node为node.toml
+[parity]
+chain = "demo-spec.json"
+base_path = "/data/app/parity-test/"
+[network]
+port = 30300
+[rpc]
+port = 8540
+apis = ["web3", "eth", "net", "personal", "parity", "parity_set","traces", "rpc", "parity_accounts"]
+[ui]
+port = 8180
+[dapps]
+port = 8080
+3、设定帐号(Account): 启动node0:
+nohup parity --config node0.toml >parity.log 2>&1 &
+登录节点控制台:
+./geth attach http://127.0.0.1:8540
+创建账户( 法内参数为密码): personal.newAccount('123')
+此时会控制台会给出一个地址(user account)，退出控制台，这样账户就获取完 成
+
+将account填写到demo-spec.json文件中:
+"validators" : {
+"list": [
+"user account"
+] }
+  再将user account加 accounts,并给 些balance,后续可以使 "0x004ec07d2329997267Ec62b4166639513386F32E": { "balance":"10000000000000000000000" }
+重启测试链
+ps aux |grep parity
+kill pid
+nohup parity --config node0.toml >parity.log 2>&1 &
+
